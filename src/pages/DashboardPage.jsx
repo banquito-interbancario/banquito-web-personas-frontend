@@ -128,14 +128,6 @@ export function DashboardPage() {
           ))}
         </div>
       </div>
-
-      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-amber-800">
-        <p className="font-semibold">Integración pendiente</p>
-        <p className="text-sm mt-1">
-          La consulta de cuentas, saldos y transferencias se conectará con el
-          account-core-service cuando esté disponible la comunicación con Oscar.
-        </p>
-      </div>
     </div>
   );
 }

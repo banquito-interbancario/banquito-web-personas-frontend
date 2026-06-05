@@ -32,4 +32,8 @@ export const getCoreParameters = () => {
   return partyApi.get('/core-parameters');
 };
 
+export const getCustomerByAccount = (accountNumber) => {
+  return partyApi.get(`/customers/by-account/${accountNumber}`);
+};
+
 export default partyApi;
