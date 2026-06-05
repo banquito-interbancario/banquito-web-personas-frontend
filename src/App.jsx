@@ -7,26 +7,20 @@ import Topbar from './components/layout/Topbar';
 
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { CustomerSearchPage } from './pages/customers/CustomerSearchPage';
-import { CustomerDetailPage } from './pages/customers/CustomerDetailPage';
-import { CustomerCreatePage } from './pages/customers/CustomerCreatePage';
-import { CustomerListPage } from './pages/customers/CustomerListPage';
-import { AccountDetailPage } from './pages/accounts/AccountDetailPage';
-import { AccountCreatePage } from './pages/accounts/AccountCreatePage';
-import { AccountAvailabilityPage } from './pages/accounts/AccountAvailabilityPage';
-import { TransactionFormPage } from './pages/transactions/TransactionFormPage';
-import { TransactionHistoryPage } from './pages/transactions/TransactionHistoryPage';
 import { BranchesPage } from './pages/BranchesPage';
+import { HolidaysPage } from './pages/HolidaysPage';
+import { ProfilePage } from './pages/ProfilePage';
+import { TransferPage } from './pages/TransferPage';
 
 import './index.css';
 
-const IntranetLayout = () => {
+const WebPersonasLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
 
   return (
     <div className="h-screen overflow-hidden" style={{ backgroundColor: '#f8f9fa' }}>
       <Topbar />
-      <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen((v) => !v)} />
+      <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen((value) => !value)} />
       <main
         className="overflow-auto transition-all duration-300"
         style={{
@@ -53,22 +47,16 @@ const router = createBrowserRouter(
       path: '/',
       element: (
         <ProtectedRoute>
-          <IntranetLayout />
+          <WebPersonasLayout />
         </ProtectedRoute>
       ),
       children: [
         { index: true, element: <Navigate to="dashboard" replace /> },
         { path: 'dashboard', element: <DashboardPage /> },
-        { path: 'clientes', element: <CustomerSearchPage /> },
-        { path: 'clientes/lista', element: <CustomerListPage /> },
-        { path: 'clientes/nuevo', element: <CustomerCreatePage /> },
-        { path: 'clientes/:id', element: <CustomerDetailPage /> },
-        { path: 'cuentas/nueva', element: <AccountCreatePage /> },
-        { path: 'cuentas/:accountNumber/disponibilidad', element: <AccountAvailabilityPage /> },
-        { path: 'cuentas/:accountNumber', element: <AccountDetailPage /> },
-        { path: 'transacciones/nueva', element: <TransactionFormPage /> },
-        { path: 'transacciones/historial/:accountNumber', element: <TransactionHistoryPage /> },
+        { path: 'perfil', element: <ProfilePage /> },
+        { path: 'transferencia', element: <TransferPage /> },
         { path: 'sucursales', element: <BranchesPage /> },
+        { path: 'feriados', element: <HolidaysPage /> },
       ],
     },
     {

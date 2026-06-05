@@ -1,185 +1,87 @@
-import { useState, useEffect } from 'react';
-import { getAllBranches, createBranch } from '../api/branchApi';
-import ConfirmModal from '../components/ui/ConfirmModal';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { useEffect, useState } from 'react';
+import { Building2, MapPin } from 'lucide-react';
+import { getBranches } from '../api/partyApi';
 
 export const BranchesPage = () => {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const [formData, setFormData] = useState({
-    code: '',
-    name: '',
-    city: ''
-  });
 
   useEffect(() => {
-    fetchBranches();
+    const loadBranches = async () => {
+      try {
+        const response = await getBranches();
+        setBranches(response.data || []);
+        setError('');
+      } catch (err) {
+        setError('No se pudieron cargar las sucursales.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadBranches();
   }, []);
 
-  const fetchBranches = async () => {
-    try {
-      const response = await getAllBranches();
-      setBranches(response.data || []);
-      setError('');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Error al cargar sucursales');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.code || !formData.name || !formData.city) {
-      setError('Todos los campos son requeridos');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const payload = {
-        branchCode: formData.code,
-        name: formData.name,
-        city: formData.city
-      };
-      await createBranch(payload);
-      await fetchBranches();
-      setShowModal(false);
-      setFormData({ code: '', name: '', city: '' });
-    } catch (err) {
-      setError(err.response?.data?.message || 'Error al crear sucursal');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (loading) return <LoadingSpinner fullPage={true} />;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[300px]">
+        <p className="text-slate-500">Cargando sucursales...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Gestionar Sucursales</h1>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          + Nueva Sucursal
-        </button>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-slate-800">
+          Sucursales BanQuito
+        </h1>
+        <p className="text-slate-500 mt-1">
+          Consulta las sucursales disponibles para atención al cliente.
+        </p>
       </div>
 
       {error && (
-        <div className="bg-red-100 text-red-800 p-4 rounded mb-6">
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4">
           {error}
         </div>
       )}
 
-      <div className="bg-white p-6 rounded-lg shadow">
-        {branches.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-100 border-b">
-                <tr>
-                  <th className="p-3">Código</th>
-                  <th className="p-3">Nombre</th>
-                  <th className="p-3">Ciudad</th>
-                  <th className="p-3">Fecha de Creación</th>
-                </tr>
-              </thead>
-              <tbody>
-                {branches.map((branch) => (
-                  <tr key={branch.id} className="border-b hover:bg-gray-50">
-                    <td className="p-3 font-semibold">{branch.branchCode}</td>
-                    <td className="p-3">{branch.name}</td>
-                    <td className="p-3">{branch.city}</td>
-                    <td className="p-3 text-gray-600">
-                      {branch.creationDate 
-                        ? new Date(branch.creationDate).toLocaleDateString('es-ES') 
-                        : 'N/A'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-gray-600 py-8 text-center">No hay sucursales registradas</p>
-        )}
-      </div>
+      {branches.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {branches.map((branch) => (
+            <div
+              key={branch.id}
+              className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center">
+                  <Building2 size={22} className="text-green-800" />
+                </div>
 
-      <div
-        className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${
-          showModal ? '' : 'hidden'
-        }`}
-      >
-        <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
-          <h2 className="text-xl font-bold mb-4">Nueva Sucursal</h2>
+                <div>
+                  <h3 className="font-bold text-slate-800">
+                    {branch.name}
+                  </h3>
+                  <p className="text-sm text-slate-500">
+                    Código: {branch.branchCode}
+                  </p>
+                </div>
+              </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Código</label>
-              <input
-                type="text"
-                name="code"
-                value={formData.code}
-                onChange={handleInputChange}
-                className="w-full p-2 border rounded"
-                required
-              />
+              <div className="flex items-center gap-2 text-slate-600">
+                <MapPin size={18} className="text-green-800" />
+                <span>{branch.city}</span>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Nombre</label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                className="w-full p-2 border rounded"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Ciudad</label>
-              <input
-                type="text"
-                name="city"
-                value={formData.city}
-                onChange={handleInputChange}
-                className="w-full p-2 border rounded"
-                required
-              />
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
-              >
-                {submitting ? 'Creando...' : 'Crear'}
-              </button>
-            </div>
-          </form>
+          ))}
         </div>
-      </div>
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+          <p className="text-slate-500">No hay sucursales registradas.</p>
+        </div>
+      )}
     </div>
   );
 };

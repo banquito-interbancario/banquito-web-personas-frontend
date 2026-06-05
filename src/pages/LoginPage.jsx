@@ -12,14 +12,15 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    document.title = 'Intranet Banquito';
+    document.title = 'BanQuito Web Personas';
+
     if (isAuthenticated) {
       navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError('');
 
     if (!username.trim()) {
@@ -33,23 +34,26 @@ export function LoginPage() {
     }
 
     setLoading(true);
+
     try {
       if (login) {
         await login(username, password);
       }
+
       navigate('/dashboard', { replace: true });
     } catch (err) {
       if (import.meta.env.DEV) {
-        console.error('❌ Error en login:', err.response?.status, err.response?.data);
+        console.error('Error en login de cliente:', err.response?.status, err.response?.data);
       }
+
       if (!err.response) {
-        setError('No se puede conectar al servidor. Por favor, intente más tarde.');
+        setError('No se puede conectar al servidor. Verifique que el party-service esté encendido.');
       } else if (err.response?.status === 401 || err.response?.status === 403) {
         setError('Usuario o contraseña incorrectos.');
       } else if (err.response?.status === 400) {
         setError(err.response?.data?.message || 'Solicitud inválida. Verifique los datos.');
       } else {
-        setError(err.response?.data?.message || 'Error al iniciar sesión. Por favor, intente de nuevo.');
+        setError(err.response?.data?.message || 'Error al iniciar sesión. Intente nuevamente.');
       }
     } finally {
       setLoading(false);
@@ -58,19 +62,34 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex bg-gray-100">
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center p-8">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-green-700 to-green-900 items-center justify-center p-8">
         <div className="text-center">
-          <img src={heroImage} alt="Banquito" className="rounded-lg shadow-2xl max-h-96 object-cover" />
-          <h1 className="text-4xl font-bold text-white mt-6">BanQuito</h1>
-          <p className="text-blue-100 mt-2">Intranet para Personal Interno</p>
+          <img
+            src={heroImage}
+            alt="BanQuito"
+            className="rounded-2xl shadow-2xl max-h-96 object-cover"
+          />
+
+          <h1 className="text-4xl font-bold text-white mt-6">
+            BanQuito
+          </h1>
+
+          <p className="text-green-100 mt-2">
+            Banca Web Personas
+          </p>
         </div>
       </div>
 
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900">Ingreso Operario</h2>
-            <p className="text-gray-600 mt-2">Acceso a la Intranet Banquito</p>
+            <h2 className="text-3xl font-bold text-gray-900">
+              Ingreso de cliente
+            </h2>
+
+            <p className="text-gray-600 mt-2">
+              Accede a tus servicios digitales BanQuito
+            </p>
           </div>
 
           {error && (
@@ -84,14 +103,15 @@ export function LoginPage() {
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
                 Usuario
               </label>
+
               <input
                 id="username"
                 type="text"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Ingrese su usuario"
+                onChange={(event) => setUsername(event.target.value)}
+                placeholder="Ejemplo: cliente1"
                 disabled={loading}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent disabled:bg-gray-100"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent disabled:bg-gray-100"
                 required
               />
             </div>
@@ -100,14 +120,15 @@ export function LoginPage() {
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 Contraseña
               </label>
+
               <input
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(event) => setPassword(event.target.value)}
                 placeholder="Ingrese su contraseña"
                 disabled={loading}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent disabled:bg-gray-100"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent disabled:bg-gray-100"
                 required
               />
             </div>
@@ -115,14 +136,14 @@ export function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition duration-200"
+              className="w-full bg-green-700 text-white font-semibold py-3 rounded-lg hover:bg-green-800 disabled:bg-gray-400 transition duration-200"
             >
               {loading ? 'Ingresando...' : 'Ingresar'}
             </button>
           </form>
 
           <p className="text-center text-gray-600 text-sm mt-4">
-            ¿Problemas de acceso? Contacte a soporte
+            ¿Problemas de acceso? Contacte a soporte BanQuito
           </p>
         </div>
       </div>

@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { AuthContext } from './authContextObject';
+import { loginCustomer } from '../api/partyApi';
 
-import { loginStaff } from '../api/authApi';
+const STORAGE_KEY = 'banquito_web_personas_auth';
 
-const STORAGE_KEY = 'banquito_auth';
-
-const DEFAULT_AUTH = { isAuthenticated: false, portal: null, user: null };
+const DEFAULT_AUTH = {
+  isAuthenticated: false,
+  portal: null,
+  user: null,
+};
 
 function loadStoredAuth() {
   try {
@@ -23,35 +26,39 @@ export function AuthProvider({ children }) {
     const handleLogout = () => {
       logout();
     };
+
     window.addEventListener('logout', handleLogout);
     return () => window.removeEventListener('logout', handleLogout);
   }, []);
 
   const login = async (username, password) => {
     try {
-      const res = await loginStaff(username, password);
-      const data = res.data;
+      const response = await loginCustomer(username, password);
+      const data = response.data;
 
       const userData = {
-        id: data.coreUserId,
-        name: data.fullName,
+        customerId: data.customerId,
         username: data.username,
-        role: data.role,
-        status: typeof data.status === 'string' ? data.status : data.status?.toString() || 'ACTIVO',
+        fullName: data.fullName,
+        customerType: data.customerType,
+        customerStatus: data.customerStatus,
+        credentialStatus: data.credentialStatus,
       };
 
       const newAuth = {
         isAuthenticated: true,
-        portal: 'operador',
+        portal: 'web-personas',
         user: userData,
       };
 
       setAuth(newAuth);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newAuth));
+      localStorage.setItem('customer', JSON.stringify(userData));
+
       return userData;
     } catch (err) {
       if (import.meta.env.DEV) {
-        console.error('❌ Error en login - Detalles:', {
+        console.error('Error en login de cliente:', {
           status: err.response?.status,
           statusText: err.response?.statusText,
           message: err.response?.data?.message,
@@ -59,6 +66,7 @@ export function AuthProvider({ children }) {
           url: err.config?.url,
         });
       }
+
       throw err;
     }
   };
@@ -72,6 +80,7 @@ export function AuthProvider({ children }) {
 
     setAuth(newAuth);
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem('customer');
   };
 
   return (

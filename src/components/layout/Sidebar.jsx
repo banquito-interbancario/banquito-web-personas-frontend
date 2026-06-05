@@ -1,23 +1,22 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
-  Users,
-  UserPlus,
-  Repeat,
+  User,
+  Send,
   Building2,
+  CalendarDays,
   Menu,
 } from 'lucide-react';
 
 const menuItems = [
-  { path: '/dashboard',           label: 'Dashboard',     Icon: LayoutDashboard },
-  { path: '/clientes',            label: 'Clientes',      Icon: Users },
-  { path: '/cuentas/nueva',       label: 'Nueva Cuenta',  Icon: UserPlus },
-  { path: '/transacciones/nueva', label: 'Transacciones', Icon: Repeat },
-  { path: '/sucursales',          label: 'Sucursales',    Icon: Building2 },
+  { path: '/dashboard', label: 'Inicio', Icon: LayoutDashboard },
+  { path: '/perfil', label: 'Mi perfil', Icon: User },
+  { path: '/transferencia', label: 'Transferencia', Icon: Send },
+  { path: '/sucursales', label: 'Sucursales', Icon: Building2 },
+  { path: '/feriados', label: 'Feriados', Icon: CalendarDays },
 ];
 
 const Sidebar = ({ isOpen, onToggle }) => {
-
   return (
     <aside
       className={`fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white border-r border-slate-200 transition-all duration-300 flex flex-col z-40 ${
@@ -30,6 +29,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
             Menú
           </span>
         )}
+
         <button
           onClick={onToggle}
           className="p-1.5 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
@@ -50,8 +50,8 @@ const Sidebar = ({ isOpen, onToggle }) => {
                 isOpen ? 'px-3 py-2.5' : 'justify-center px-0 py-2.5'
               } ${
                 isActive
-                  ? 'bg-blue-50 text-[#1E40AF]'
-                  : 'text-slate-500 hover:bg-blue-50 hover:text-[#1E40AF]'
+                  ? 'bg-green-50 text-green-800'
+                  : 'text-slate-500 hover:bg-green-50 hover:text-green-800'
               }`
             }
           >
@@ -60,10 +60,11 @@ const Sidebar = ({ isOpen, onToggle }) => {
                 <Icon
                   size={20}
                   strokeWidth={1.5}
-                  color={isActive ? '#1E40AF' : '#4B5563'}
+                  color={isActive ? '#166534' : '#4B5563'}
                 />
+
                 {isOpen && (
-                  <span className={`text-sm whitespace-nowrap tracking-tight font-semibold ${isActive ? 'text-[#1E40AF]' : 'text-[#1E293B]'}`}>
+                  <span className={`text-sm whitespace-nowrap tracking-tight font-semibold ${isActive ? 'text-green-800' : 'text-slate-800'}`}>
                     {label}
                   </span>
                 )}
@@ -75,7 +76,9 @@ const Sidebar = ({ isOpen, onToggle }) => {
 
       {isOpen && (
         <div className="px-4 py-3 border-t border-slate-100">
-          <p className="text-[10px] text-slate-400 text-center tracking-wide">Banquito v1.0.0</p>
+          <p className="text-[10px] text-slate-400 text-center tracking-wide">
+            BanQuito Web Personas
+          </p>
         </div>
       )}
     </aside>
