@@ -8,10 +8,11 @@ import Topbar from './components/layout/Topbar';
 import { LoginPage } from './pages/LoginPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { BranchesPage } from './pages/BranchesPage';
 import { HolidaysPage } from './pages/HolidaysPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { TransferPage } from './pages/TransferPage';
+import { MovementsPage } from './pages/MovementsPage';
+import { AccountsPage } from './pages/AccountsPage';
 
 import './index.css';
 
@@ -59,8 +60,9 @@ const router = createBrowserRouter(
         { index: true, element: <Navigate to="dashboard" replace /> },
         { path: 'dashboard', element: <DashboardPage /> },
         { path: 'perfil', element: <ProfilePage /> },
+        { path: 'cuentas', element: <AccountsPage /> },
         { path: 'transferencia', element: <TransferPage /> },
-        { path: 'sucursales', element: <BranchesPage /> },
+        { path: 'movimientos', element: <MovementsPage /> },
         { path: 'feriados', element: <HolidaysPage /> },
       ],
     },

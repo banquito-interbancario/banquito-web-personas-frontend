@@ -13,4 +13,8 @@ export const transferP2P = (payload) => {
   return accountApi.post('/accounts/transfer/p2p', payload);
 };
 
+export const getAccountTransactions = (accountId, page = 0, size = 10) => {
+  return accountApi.get(`/accounts/${accountId}/transactions`, { params: { page, size } });
+};
+
 export default accountApi;

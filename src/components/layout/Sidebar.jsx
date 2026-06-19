@@ -1,19 +1,21 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
+  Wallet,
   User,
   Send,
-  Building2,
   CalendarDays,
   Menu,
+  History,
 } from 'lucide-react';
 
 const menuItems = [
   { path: '/dashboard', label: 'Inicio', Icon: LayoutDashboard },
+  { path: '/cuentas', label: 'Mis cuentas', Icon: Wallet },
   { path: '/perfil', label: 'Mi perfil', Icon: User },
   { path: '/transferencia', label: 'Transferencia', Icon: Send },
-  { path: '/sucursales', label: 'Sucursales', Icon: Building2 },
-  { path: '/feriados', label: 'Feriados', Icon: CalendarDays },
+  { path: '/movimientos', label: 'Movimientos', Icon: History },
+  { path: '/feriados', label: 'Calendario', Icon: CalendarDays },
 ];
 
 const Sidebar = ({ isOpen, onToggle }) => {

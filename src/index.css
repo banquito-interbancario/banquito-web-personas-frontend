@@ -135,3 +135,31 @@ a {
 a:hover {
   color: var(--color-navy);
 }
+
+/* ── Estilos de impresión: solo muestra el comprobante ─────────────────────── */
+@media print {
+  aside,
+  nav,
+  header,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  .rounded-2xl,
+  .rounded-xl,
+  .shadow-sm {
+    box-shadow: none !important;
+    border-radius: 4px !important;
+  }
+}

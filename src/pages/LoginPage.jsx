@@ -5,7 +5,7 @@ import heroImage from '../assets/banquito3.webp';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useAuth() || {};
+  const { login, isAuthenticated, mustChangePassword } = useAuth() || {};
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -15,9 +15,13 @@ export function LoginPage() {
     document.title = 'BanQuito Web Personas';
 
     if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
+      if (mustChangePassword) {
+        navigate('/cambiar-contrasena', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, mustChangePassword, navigate]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -38,11 +42,7 @@ export function LoginPage() {
     try {
       const userData = login ? await login(username, password) : null;
 
-      if (userData?.mustChangePassword) {
-        navigate('/cambiar-contrasena', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
+      // The useEffect will handle the navigation based on the updated AuthContext state.
     } catch (err) {
       if (import.meta.env.DEV) {
         console.error('Error en login de cliente:', err.response?.status, err.response?.data);

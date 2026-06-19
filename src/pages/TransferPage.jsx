@@ -1,11 +1,13 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getCustomerByAccount } from '../api/partyApi';
 import { getAccountsByCustomerId, transferP2P } from '../api/accountApi';
-import { Send, Search, AlertCircle } from 'lucide-react';
+import { Send, Search, AlertCircle, CheckCircle, Plus, Home, Printer } from 'lucide-react';
 
 export function TransferPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const storedCustomer = JSON.parse(localStorage.getItem('customer') || 'null');
   const storedAuth = JSON.parse(localStorage.getItem('banquito_web_personas_auth') || 'null');
@@ -24,6 +26,7 @@ export function TransferPage() {
   const [transferring, setTransferring] = React.useState(false);
   const [loadingAccounts, setLoadingAccounts] = React.useState(true);
   const [transferResult, setTransferResult] = React.useState(null);
+  const [originAccountSnapshot, setOriginAccountSnapshot] = React.useState(null);
 
   React.useEffect(() => {
     const loadAccounts = async () => {
@@ -67,50 +70,17 @@ export function TransferPage() {
   );
 
   const validateTransferForm = () => {
-    if (!originAccountId) {
-      return 'Seleccione la cuenta origen.';
-    }
-
-    if (!destinationAccount.trim()) {
-      return 'Ingrese la cuenta destino.';
-    }
-
-    if (!owner) {
-      return 'Primero debe validar el titular de la cuenta destino.';
-    }
-
-    if (!amount || Number(amount) <= 0) {
-      return 'Ingrese un monto válido para la transferencia.';
-    }
+    if (!originAccountId) return 'Seleccione la cuenta origen.';
+    if (!destinationAccount.trim()) return 'Ingrese la cuenta destino.';
+    if (!owner) return 'Primero debe validar el titular de la cuenta destino.';
+    if (!amount || Number(amount) <= 0) return 'Ingrese un monto válido para la transferencia.';
 
     const numericAmount = Number(amount);
-
     if (selectedOriginAccount && numericAmount > Number(selectedOriginAccount.availableBalance)) {
       return 'Saldo insuficiente para esta transferencia.';
     }
 
     return '';
-  };
-
-  const buildTransferPayload = () => ({
-    originAccountId: Number(originAccountId),
-    destinationAccountNumber: destinationAccount.trim(),
-    amount: Number(amount),
-    transactionUuid: crypto.randomUUID(),
-    reference: description.trim() || 'Transferencia P2P Web Personas',
-  });
-
-  const updateOriginAccountBalance = (originNewBalance) => {
-    setAccounts((prevAccounts) =>
-      prevAccounts.map((account) =>
-        String(account.accountId) === String(originAccountId)
-          ? {
-              ...account,
-              availableBalance: originNewBalance,
-            }
-          : account
-      )
-    );
   };
 
   const getTransferErrorMessage = (error) => {
@@ -154,7 +124,7 @@ export function TransferPage() {
     try {
       const response = await getCustomerByAccount(destinationAccount.trim());
       setOwner(response.data);
-      setMessage('Titular validado correctamente.');
+      setMessage('');
     } catch (error) {
       if (!error.response) {
         setMessage('No se puede conectar al party-service. Verifique que el backend esté encendido.');
@@ -171,23 +141,27 @@ export function TransferPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setMessage('');
-    setTransferResult(null);
 
     const validationMessage = validateTransferForm();
-
     if (validationMessage) {
       setMessage(validationMessage);
       return;
     }
 
     setTransferring(true);
+    setOriginAccountSnapshot(selectedOriginAccount);
 
     try {
-      const response = await transferP2P(buildTransferPayload());
+      const payload = {
+        originAccountId: Number(originAccountId),
+        destinationAccountNumber: destinationAccount.trim(),
+        amount: Number(amount),
+        transactionUuid: crypto.randomUUID(),
+        reference: description.trim() || 'Transferencia Web Personas',
+      };
 
+      const response = await transferP2P(payload);
       setTransferResult(response.data);
-      setMessage('Transferencia realizada correctamente.');
-      updateOriginAccountBalance(response.data.originNewBalance);
     } catch (error) {
       setMessage(getTransferErrorMessage(error));
     } finally {
@@ -195,15 +169,171 @@ export function TransferPage() {
     }
   };
 
+  const handleNewTransfer = () => {
+    setTransferResult(null);
+    setOriginAccountSnapshot(null);
+    setDestinationAccount('');
+    setAmount('');
+    setDescription('');
+    setOwner(null);
+    setMessage('');
+    // reload accounts to get updated balances
+    const loadAccounts = async () => {
+      setLoadingAccounts(true);
+      try {
+        const response = await getAccountsByCustomerId(customerId);
+        setAccounts(response.data || []);
+      } catch {
+        // ignore
+      } finally {
+        setLoadingAccounts(false);
+      }
+    };
+    loadAccounts();
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // ── Comprobante completo tras transferencia exitosa ──
+  if (transferResult) {
+    const originAcc = originAccountSnapshot || selectedOriginAccount;
+    const transferDate = new Date();
+    const formattedDate = transferDate.toLocaleDateString('es-EC', {
+      year: 'numeric', month: 'long', day: 'numeric',
+    });
+    const formattedTime = transferDate.toLocaleTimeString('es-EC', {
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+
+    return (
+      <div className="space-y-6 max-w-2xl">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircle size={28} className="text-green-700" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Transferencia exitosa</h1>
+            <p className="text-slate-500 text-sm">La transacción fue procesada correctamente.</p>
+          </div>
+        </div>
+
+        {/* Comprobante */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none">
+          {/* Header del comprobante */}
+          <div className="bg-green-700 px-6 py-4 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-green-100 uppercase tracking-widest">Comprobante Electrónico</p>
+                <p className="text-xl font-bold mt-0.5">Transferencia</p>
+              </div>
+              <div className="text-right text-sm text-green-100">
+                <p>{formattedDate}</p>
+                <p>{formattedTime}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Cuerpo del comprobante */}
+          <div className="px-6 py-5 space-y-5">
+            {/* ID de transacción */}
+            <div className="bg-slate-50 rounded-xl px-4 py-3">
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">N.º de transacción</p>
+              <p className="font-mono text-sm font-bold text-slate-800 break-all">{transferResult.transactionId}</p>
+            </div>
+
+            {/* Estado */}
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-800 text-sm font-semibold px-3 py-1 rounded-full">
+                <CheckCircle size={14} />
+                {transferResult.status || 'COMPLETADA'}
+              </span>
+            </div>
+
+            {/* Detalles en grid */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+              <div>
+                <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-0.5">Cuenta origen</p>
+                <p className="font-semibold text-slate-800 font-mono">{originAcc?.accountNumber || '-'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-0.5">Cuenta destino</p>
+                <p className="font-semibold text-slate-800 font-mono">{transferResult.destinationAccountNumber}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-0.5">Titular destino</p>
+                <p className="font-semibold text-slate-800">{transferResult.destinationHolderName || owner?.fullName || '-'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-0.5">Fecha contable</p>
+                <p className="font-semibold text-slate-800">{transferResult.accountingDate}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-0.5">Descripción</p>
+                <p className="font-semibold text-slate-800">{description || 'Transferencia Web Personas'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-0.5">Canal</p>
+                <p className="font-semibold text-slate-800">Web Personas</p>
+              </div>
+            </div>
+
+            {/* Monto destacado */}
+            <div className="border-t border-slate-100 pt-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-0.5">Monto transferido</p>
+                <p className="text-3xl font-black text-slate-800">
+                  ${Number(amount).toLocaleString('es-EC', { minimumFractionDigits: 2 })}
+                  <span className="text-base font-medium text-slate-400 ml-1">USD</span>
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-0.5">Nuevo saldo disponible</p>
+                <p className="text-xl font-bold text-green-700">
+                  ${Number(transferResult.originNewBalance).toLocaleString('es-EC', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Acciones */}
+        <div className="flex flex-wrap gap-3 print:hidden">
+          <button
+            onClick={handleNewTransfer}
+            className="inline-flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white font-semibold px-5 py-3 rounded-xl transition"
+          >
+            <Plus size={18} />
+            Nueva transferencia
+          </button>
+
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold px-5 py-3 rounded-xl transition"
+          >
+            <Home size={18} />
+            Ir al inicio
+          </button>
+
+          <button
+            onClick={handlePrint}
+            className="inline-flex items-center gap-2 border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold px-5 py-3 rounded-xl transition"
+          >
+            <Printer size={18} />
+            Imprimir
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Formulario de transferencia ──
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-800">
-          Transferencia P2P
-        </h1>
-        <p className="text-slate-500 mt-1">
-          Realiza una transferencia hacia otra cuenta BanQuito.
-        </p>
+        <h1 className="text-3xl font-bold text-slate-800">Transferencias</h1>
+        <p className="text-slate-500 mt-1">Realiza una transferencia hacia otra cuenta BanQuito.</p>
       </div>
 
       <form
@@ -211,32 +341,22 @@ export function TransferPage() {
         className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-5 max-w-3xl"
       >
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Cuenta origen
-          </label>
-
+          <label className="block text-sm font-medium text-slate-700 mb-2">Cuenta origen</label>
           <select
             value={originAccountId}
             onChange={(event) => {
               setOriginAccountId(event.target.value);
               setOwner(null);
-              setTransferResult(null);
               setMessage('');
             }}
             disabled={loadingAccounts || accounts.length === 0}
             className="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-700 disabled:bg-slate-100"
           >
-            {loadingAccounts && (
-              <option value="">Cargando cuentas...</option>
-            )}
-
-            {!loadingAccounts && accounts.length === 0 && (
-              <option value="">No tiene cuentas disponibles</option>
-            )}
-
+            {loadingAccounts && <option value="">Cargando cuentas...</option>}
+            {!loadingAccounts && accounts.length === 0 && <option value="">No tiene cuentas disponibles</option>}
             {!loadingAccounts && accounts.map((account) => (
               <option key={account.accountId} value={account.accountId}>
-                {account.accountNumber} - Disponible: ${Number(account.availableBalance).toFixed(2)} {account.currency}
+                {account.accountNumber} — Disponible: ${Number(account.availableBalance).toFixed(2)} {account.currency}
               </option>
             ))}
           </select>
@@ -249,10 +369,7 @@ export function TransferPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Cuenta destino
-          </label>
-
+          <label className="block text-sm font-medium text-slate-700 mb-2">Cuenta destino</label>
           <div className="flex gap-3">
             <input
               type="text"
@@ -260,13 +377,11 @@ export function TransferPage() {
               onChange={(event) => {
                 setDestinationAccount(event.target.value);
                 setOwner(null);
-                setTransferResult(null);
                 setMessage('');
               }}
               placeholder="Ejemplo: 2200000002"
               className="flex-1 rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-700"
             />
-
             <button
               type="button"
               onClick={handleValidateOwner}
@@ -281,10 +396,7 @@ export function TransferPage() {
 
         {owner && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-            <p className="text-sm font-semibold text-green-800 mb-2">
-              Titular encontrado
-            </p>
-
+            <p className="text-sm font-semibold text-green-800 mb-2">Titular encontrado</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-green-900">
               <p><span className="font-medium">Nombre:</span> {owner.fullName}</p>
               <p><span className="font-medium">Cuenta:</span> {owner.accountNumber}</p>
@@ -295,26 +407,20 @@ export function TransferPage() {
         )}
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Monto
-          </label>
-
+          <label className="block text-sm font-medium text-slate-700 mb-2">Monto</label>
           <input
             type="number"
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
             placeholder="0.00"
-            min="0"
+            min="0.01"
             step="0.01"
             className="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-700"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Descripción
-          </label>
-
+          <label className="block text-sm font-medium text-slate-700 mb-2">Descripción</label>
           <textarea
             value={description}
             onChange={(event) => setDescription(event.target.value)}
@@ -325,10 +431,7 @@ export function TransferPage() {
         </div>
 
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-          <p className="text-sm font-semibold text-slate-700 mb-2">
-            Resumen
-          </p>
-
+          <p className="text-sm font-semibold text-slate-700 mb-2">Resumen</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-slate-600">
             <p><span className="font-medium">Cuenta origen:</span> {selectedOriginAccount?.accountNumber || '-'}</p>
             <p><span className="font-medium">Cuenta destino:</span> {destinationAccount || '-'}</p>
@@ -348,24 +451,9 @@ export function TransferPage() {
         </button>
 
         {message && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 flex items-start gap-3">
-            <AlertCircle size={20} className="mt-0.5" />
+          <div className="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 flex items-start gap-3">
+            <AlertCircle size={20} className="mt-0.5 shrink-0" />
             <span>{message}</span>
-          </div>
-        )}
-
-        {transferResult && (
-          <div className="bg-green-50 border border-green-200 text-green-900 rounded-xl p-4">
-            <p className="font-semibold mb-2">Comprobante de transferencia</p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              <p><span className="font-medium">Transacción:</span> {transferResult.transactionId}</p>
-              <p><span className="font-medium">Estado:</span> {transferResult.status}</p>
-              <p><span className="font-medium">Destino:</span> {transferResult.destinationAccountNumber}</p>
-              <p><span className="font-medium">Titular:</span> {transferResult.destinationHolderName}</p>
-              <p><span className="font-medium">Nuevo saldo:</span> ${Number(transferResult.originNewBalance).toFixed(2)}</p>
-              <p><span className="font-medium">Fecha contable:</span> {transferResult.accountingDate}</p>
-            </div>
           </div>
         )}
       </form>
