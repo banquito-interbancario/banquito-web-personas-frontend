@@ -4,6 +4,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Oculta las flechas del input numerico (molestan al mover el mouse encima) */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
 /* Colores y variables de la paleta bancaria */
 :root {
   --color-navy: #001f3f;

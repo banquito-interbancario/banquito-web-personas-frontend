@@ -215,6 +215,7 @@ export function TransferPage() {
         setTransferResult(response.data);
       }
     } catch (error) {
+      console.error('Transfer error:', error, error?.code, error?.message, error?.response);
       setMessage(getTransferErrorMessage(error));
     } finally {
       setTransferring(false);
@@ -481,7 +482,7 @@ export function TransferPage() {
                   type="text"
                   value={beneficiaryFirstName}
                   onChange={(event) => setBeneficiaryFirstName(event.target.value)}
-                  placeholder="Ej. Wendy Pamela"
+                  placeholder="Ej. María José"
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-700"
                 />
               </div>
@@ -491,7 +492,7 @@ export function TransferPage() {
                   type="text"
                   value={beneficiaryLastName}
                   onChange={(event) => setBeneficiaryLastName(event.target.value)}
-                  placeholder="Ej. Herrera Quinte"
+                  placeholder="Ej. Salazar Vega"
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-700"
                 />
               </div>
@@ -540,11 +541,27 @@ export function TransferPage() {
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">Monto</label>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {[10, 20, 50, 80, 100].map((quickAmount) => (
+              <button
+                key={quickAmount}
+                type="button"
+                onClick={() => setAmount(String(quickAmount))}
+                className={`px-4 py-2 rounded-xl border font-semibold transition ${
+                  String(amount) === String(quickAmount)
+                    ? 'bg-green-700 text-white border-green-700'
+                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                ${quickAmount}
+              </button>
+            ))}
+          </div>
           <input
             type="number"
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
-            placeholder="0.00"
+            placeholder="Otro monto"
             min="0.01"
             step="0.01"
             className="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-700"
