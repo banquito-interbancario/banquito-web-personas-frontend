@@ -38,7 +38,10 @@ export function TransferPage() {
   const [banks, setBanks] = React.useState([]);
   const [externalBankCode, setExternalBankCode] = React.useState('');
   const [externalAccountNumber, setExternalAccountNumber] = React.useState('');
-  const [beneficiaryName, setBeneficiaryName] = React.useState('');
+  const [beneficiaryFirstName, setBeneficiaryFirstName] = React.useState('');
+  const [beneficiaryLastName, setBeneficiaryLastName] = React.useState('');
+  const beneficiaryName = `${beneficiaryFirstName.trim()} ${beneficiaryLastName.trim()}`.trim();
+  const selectedBank = banks.find((bank) => bank.code === externalBankCode);
 
   React.useEffect(() => {
     switchApi.get('/api/v2/payments/routing-codes')
@@ -100,7 +103,8 @@ export function TransferPage() {
     if (transferMode === 'external') {
       if (!externalBankCode) return 'Seleccione el banco destino.';
       if (!externalAccountNumber.trim()) return 'Ingrese el número de cuenta externa.';
-      if (!beneficiaryName.trim()) return 'Ingrese el nombre del beneficiario.';
+      if (!beneficiaryFirstName.trim()) return 'Ingrese los nombres del beneficiario.';
+      if (!beneficiaryLastName.trim()) return 'Ingrese los apellidos del beneficiario.';
     } else {
       if (!destinationAccount.trim()) return 'Ingrese la cuenta destino.';
       if (!owner) return 'Primero debe validar el titular de la cuenta destino.';
@@ -226,7 +230,8 @@ export function TransferPage() {
     setOwner(null);
     setMessage('');
     setExternalAccountNumber('');
-    setBeneficiaryName('');
+    setBeneficiaryFirstName('');
+    setBeneficiaryLastName('');
     // reload accounts to get updated balances
     const loadAccounts = async () => {
       setLoadingAccounts(true);
@@ -455,6 +460,9 @@ export function TransferPage() {
                   <option key={bank.code} value={bank.code}>{bank.name}</option>
                 ))}
               </select>
+              {selectedBank?.description && (
+                <p className="text-xs text-slate-500 mt-2">{selectedBank.description}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Número de cuenta externa</label>
@@ -466,15 +474,27 @@ export function TransferPage() {
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-700"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Nombre del beneficiario</label>
-              <input
-                type="text"
-                value={beneficiaryName}
-                onChange={(event) => setBeneficiaryName(event.target.value)}
-                placeholder="Nombre completo"
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-700"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Nombres del beneficiario</label>
+                <input
+                  type="text"
+                  value={beneficiaryFirstName}
+                  onChange={(event) => setBeneficiaryFirstName(event.target.value)}
+                  placeholder="Ej. Wendy Pamela"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-700"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Apellidos del beneficiario</label>
+                <input
+                  type="text"
+                  value={beneficiaryLastName}
+                  onChange={(event) => setBeneficiaryLastName(event.target.value)}
+                  placeholder="Ej. Herrera Quinte"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-700"
+                />
+              </div>
             </div>
             <p className="text-xs text-slate-500">Se cobrará una comisión fija de $0.60 + IVA sobre la transferencia.</p>
           </>
