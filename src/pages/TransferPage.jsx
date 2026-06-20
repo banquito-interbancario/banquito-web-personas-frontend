@@ -1,9 +1,15 @@
 import React from 'react';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getCustomerByAccount } from '../api/partyApi';
-import { getAccountsByCustomerId, transferP2P } from '../api/accountApi';
-import { Send, Search, AlertCircle, CheckCircle, Plus, Home, Printer } from 'lucide-react';
+import { getAccountsByCustomerId, transferP2P, transferExternal } from '../api/accountApi';
+import { Send, Search, AlertCircle, CheckCircle, Plus, Home, Printer, Landmark } from 'lucide-react';
+
+const switchApi = axios.create({
+  baseURL: import.meta.env.VITE_SWITCH_API_BASE_URL || 'http://localhost:8010',
+  timeout: Number(import.meta.env.VITE_API_TIMEOUT || 10000),
+});
 
 export function TransferPage() {
   const { user } = useAuth();
@@ -27,6 +33,24 @@ export function TransferPage() {
   const [loadingAccounts, setLoadingAccounts] = React.useState(true);
   const [transferResult, setTransferResult] = React.useState(null);
   const [originAccountSnapshot, setOriginAccountSnapshot] = React.useState(null);
+
+  const [transferMode, setTransferMode] = React.useState('internal');
+  const [banks, setBanks] = React.useState([]);
+  const [externalBankCode, setExternalBankCode] = React.useState('');
+  const [externalAccountNumber, setExternalAccountNumber] = React.useState('');
+  const [beneficiaryName, setBeneficiaryName] = React.useState('');
+
+  React.useEffect(() => {
+    switchApi.get('/api/v2/payments/routing-codes')
+      .then((response) => {
+        const externalBanks = (response.data || []).filter((bank) => bank.valueString === 'OFF_US');
+        setBanks(externalBanks);
+        if (externalBanks.length > 0) {
+          setExternalBankCode(externalBanks[0].code);
+        }
+      })
+      .catch(() => setBanks([]));
+  }, []);
 
   React.useEffect(() => {
     const loadAccounts = async () => {
@@ -71,9 +95,16 @@ export function TransferPage() {
 
   const validateTransferForm = () => {
     if (!originAccountId) return 'Seleccione la cuenta origen.';
-    if (!destinationAccount.trim()) return 'Ingrese la cuenta destino.';
-    if (!owner) return 'Primero debe validar el titular de la cuenta destino.';
     if (!amount || Number(amount) <= 0) return 'Ingrese un monto válido para la transferencia.';
+
+    if (transferMode === 'external') {
+      if (!externalBankCode) return 'Seleccione el banco destino.';
+      if (!externalAccountNumber.trim()) return 'Ingrese el número de cuenta externa.';
+      if (!beneficiaryName.trim()) return 'Ingrese el nombre del beneficiario.';
+    } else {
+      if (!destinationAccount.trim()) return 'Ingrese la cuenta destino.';
+      if (!owner) return 'Primero debe validar el titular de la cuenta destino.';
+    }
 
     const numericAmount = Number(amount);
     if (selectedOriginAccount && numericAmount > Number(selectedOriginAccount.availableBalance)) {
@@ -152,16 +183,33 @@ export function TransferPage() {
     setOriginAccountSnapshot(selectedOriginAccount);
 
     try {
-      const payload = {
-        originAccountId: Number(originAccountId),
-        destinationAccountNumber: destinationAccount.trim(),
-        amount: Number(amount),
-        transactionUuid: crypto.randomUUID(),
-        reference: description.trim() || 'Transferencia Web Personas',
-      };
+      if (transferMode === 'external') {
+        const bank = banks.find((b) => b.code === externalBankCode);
+        const payload = {
+          originAccountId: Number(originAccountId),
+          externalBankCode,
+          externalBankName: bank?.name || externalBankCode,
+          externalAccountNumber: externalAccountNumber.trim(),
+          beneficiaryName: beneficiaryName.trim(),
+          amount: Number(amount),
+          transactionUuid: crypto.randomUUID(),
+          reference: description.trim() || 'Transferencia interbancaria Web Personas',
+        };
 
-      const response = await transferP2P(payload);
-      setTransferResult(response.data);
+        const response = await transferExternal(payload);
+        setTransferResult({ ...response.data, destinationAccountNumber: externalAccountNumber.trim(), destinationHolderName: beneficiaryName.trim() });
+      } else {
+        const payload = {
+          originAccountId: Number(originAccountId),
+          destinationAccountNumber: destinationAccount.trim(),
+          amount: Number(amount),
+          transactionUuid: crypto.randomUUID(),
+          reference: description.trim() || 'Transferencia Web Personas',
+        };
+
+        const response = await transferP2P(payload);
+        setTransferResult(response.data);
+      }
     } catch (error) {
       setMessage(getTransferErrorMessage(error));
     } finally {
@@ -177,6 +225,8 @@ export function TransferPage() {
     setDescription('');
     setOwner(null);
     setMessage('');
+    setExternalAccountNumber('');
+    setBeneficiaryName('');
     // reload accounts to get updated balances
     const loadAccounts = async () => {
       setLoadingAccounts(true);
