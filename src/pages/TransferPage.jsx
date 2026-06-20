@@ -341,7 +341,7 @@ export function TransferPage() {
               <div className="text-right">
                 <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-0.5">Nuevo saldo disponible</p>
                 <p className="text-xl font-bold text-green-700">
-                  ${Number(transferResult.originNewBalance).toLocaleString('es-EC', { minimumFractionDigits: 2 })}
+                  ${Number(transferResult.originNewBalance ?? transferResult.remainingBalance ?? 0).toLocaleString('es-EC', { minimumFractionDigits: 2 })}
                 </p>
               </div>
             </div>
@@ -383,7 +383,30 @@ export function TransferPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-slate-800">Transferencias</h1>
-        <p className="text-slate-500 mt-1">Realiza una transferencia hacia otra cuenta BanQuito.</p>
+        <p className="text-slate-500 mt-1">Realiza una transferencia hacia otra cuenta BanQuito o a otro banco.</p>
+      </div>
+
+      <div className="flex gap-3 max-w-3xl">
+        <button
+          type="button"
+          onClick={() => { setTransferMode('internal'); setMessage(''); }}
+          className={`flex-1 inline-flex items-center justify-center gap-2 font-semibold px-5 py-3 rounded-xl transition border ${
+            transferMode === 'internal' ? 'bg-green-700 text-white border-green-700' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+          }`}
+        >
+          <Send size={18} />
+          A otra cuenta BanQuito
+        </button>
+        <button
+          type="button"
+          onClick={() => { setTransferMode('external'); setMessage(''); }}
+          className={`flex-1 inline-flex items-center justify-center gap-2 font-semibold px-5 py-3 rounded-xl transition border ${
+            transferMode === 'external' ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+          }`}
+        >
+          <Landmark size={18} />
+          A otro banco
+        </button>
       </div>
 
       <form
@@ -418,33 +441,72 @@ export function TransferPage() {
           )}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Cuenta destino</label>
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={destinationAccount}
-              onChange={(event) => {
-                setDestinationAccount(event.target.value);
-                setOwner(null);
-                setMessage('');
-              }}
-              placeholder="Ejemplo: 2200000002"
-              className="flex-1 rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-700"
-            />
-            <button
-              type="button"
-              onClick={handleValidateOwner}
-              disabled={validating}
-              className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-400 text-white font-semibold px-5 py-3 rounded-xl transition"
-            >
-              <Search size={18} />
-              {validating ? 'Validando...' : 'Validar'}
-            </button>
+        {transferMode === 'external' ? (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Banco destino</label>
+              <select
+                value={externalBankCode}
+                onChange={(event) => setExternalBankCode(event.target.value)}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-700"
+              >
+                {banks.length === 0 && <option value="">Sin bancos disponibles</option>}
+                {banks.map((bank) => (
+                  <option key={bank.code} value={bank.code}>{bank.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Número de cuenta externa</label>
+              <input
+                type="text"
+                value={externalAccountNumber}
+                onChange={(event) => setExternalAccountNumber(event.target.value)}
+                placeholder="Cuenta en el banco destino"
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-700"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Nombre del beneficiario</label>
+              <input
+                type="text"
+                value={beneficiaryName}
+                onChange={(event) => setBeneficiaryName(event.target.value)}
+                placeholder="Nombre completo"
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-700"
+              />
+            </div>
+            <p className="text-xs text-slate-500">Se cobrará una comisión fija de $0.60 + IVA sobre la transferencia.</p>
+          </>
+        ) : (
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Cuenta destino</label>
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={destinationAccount}
+                onChange={(event) => {
+                  setDestinationAccount(event.target.value);
+                  setOwner(null);
+                  setMessage('');
+                }}
+                placeholder="Ejemplo: 2200000002"
+                className="flex-1 rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-700"
+              />
+              <button
+                type="button"
+                onClick={handleValidateOwner}
+                disabled={validating}
+                className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-400 text-white font-semibold px-5 py-3 rounded-xl transition"
+              >
+                <Search size={18} />
+                {validating ? 'Validando...' : 'Validar'}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
-        {owner && (
+        {transferMode === 'internal' && owner && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-4">
             <p className="text-sm font-semibold text-green-800 mb-2">Titular encontrado</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-green-900">
