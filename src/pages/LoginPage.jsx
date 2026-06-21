@@ -40,7 +40,9 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      const userData = login ? await login(username, password) : null;
+      if (login) {
+        await login(username, password);
+      }
 
       // The useEffect will handle the navigation based on the updated AuthContext state.
     } catch (err) {

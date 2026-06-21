@@ -20,17 +20,20 @@ function generateUuid() {
       // contexto inseguro, sigue con el fallback
     }
   }
+
   if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
     const bytes = crypto.getRandomValues(new Uint8Array(16));
     bytes[6] = (bytes[6] & 0x0f) | 0x40;
     bytes[8] = (bytes[8] & 0x3f) | 0x80;
-    const hex = [...bytes].map((b) => b.toString(16).padStart(2, '0'));
+    const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, '0'));
+
     return `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-${hex.slice(6, 8).join('')}-${hex.slice(8, 10).join('')}-${hex.slice(10, 16).join('')}`;
   }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
+
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+    const randomValue = (Math.random() * 16) | 0;
+    const value = character === 'x' ? randomValue : (randomValue & 0x3) | 0x8;
+    return value.toString(16);
   });
 }
 
@@ -63,6 +66,7 @@ export function TransferPage() {
   const [externalAccountNumber, setExternalAccountNumber] = React.useState('');
   const [beneficiaryFirstName, setBeneficiaryFirstName] = React.useState('');
   const [beneficiaryLastName, setBeneficiaryLastName] = React.useState('');
+
   const beneficiaryName = `${beneficiaryFirstName.trim()} ${beneficiaryLastName.trim()}`.trim();
   const selectedBank = banks.find((bank) => bank.code === externalBankCode);
 
@@ -71,6 +75,7 @@ export function TransferPage() {
       .then((response) => {
         const externalBanks = (response.data || []).filter((bank) => bank.valueString === 'OFF_US');
         setBanks(externalBanks);
+
         if (externalBanks.length > 0) {
           setExternalBankCode(externalBanks[0].code);
         }
@@ -119,26 +124,72 @@ export function TransferPage() {
     (account) => String(account.accountId) === String(originAccountId)
   );
 
-  const validateTransferForm = () => {
-    if (!originAccountId) return 'Seleccione la cuenta origen.';
-    if (!amount || Number(amount) <= 0) return 'Ingrese un monto válido para la transferencia.';
-
-    if (transferMode === 'external') {
-      if (!externalBankCode) return 'Seleccione el banco destino.';
-      if (!externalAccountNumber.trim()) return 'Ingrese el número de cuenta externa.';
-      if (!beneficiaryFirstName.trim()) return 'Ingrese los nombres del beneficiario.';
-      if (!beneficiaryLastName.trim()) return 'Ingrese los apellidos del beneficiario.';
-    } else {
-      if (!destinationAccount.trim()) return 'Ingrese la cuenta destino.';
-      if (!owner) return 'Primero debe validar el titular de la cuenta destino.';
+  const validateExternalTransferForm = () => {
+    if (!externalBankCode) {
+      return 'Seleccione el banco destino.';
     }
 
+    if (!externalAccountNumber.trim()) {
+      return 'Ingrese el número de cuenta externa.';
+    }
+
+    if (!beneficiaryFirstName.trim()) {
+      return 'Ingrese los nombres del beneficiario.';
+    }
+
+    if (!beneficiaryLastName.trim()) {
+      return 'Ingrese los apellidos del beneficiario.';
+    }
+
+    return '';
+  };
+
+  const validateInternalTransferForm = () => {
+    if (!destinationAccount.trim()) {
+      return 'Ingrese la cuenta destino.';
+    }
+
+    if (!owner) {
+      return 'Primero debe validar el titular de la cuenta destino.';
+    }
+
+    return '';
+  };
+
+  const validateTransferModeForm = () => {
+    if (transferMode === 'external') {
+      return validateExternalTransferForm();
+    }
+
+    return validateInternalTransferForm();
+  };
+
+  const validateAvailableBalance = () => {
     const numericAmount = Number(amount);
+
     if (selectedOriginAccount && numericAmount > Number(selectedOriginAccount.availableBalance)) {
       return 'Saldo insuficiente para esta transferencia.';
     }
 
     return '';
+  };
+
+  const validateTransferForm = () => {
+    if (!originAccountId) {
+      return 'Seleccione la cuenta origen.';
+    }
+
+    if (!amount || Number(amount) <= 0) {
+      return 'Ingrese un monto válido para la transferencia.';
+    }
+
+    const transferModeError = validateTransferModeForm();
+
+    if (transferModeError) {
+      return transferModeError;
+    }
+
+    return validateAvailableBalance();
   };
 
   const getTransferErrorMessage = (error) => {
@@ -196,11 +247,62 @@ export function TransferPage() {
     }
   };
 
+  const buildExternalTransferPayload = () => {
+    const bank = banks.find((currentBank) => currentBank.code === externalBankCode);
+
+    return {
+      originAccountId: Number(originAccountId),
+      externalBankCode,
+      externalBankName: bank?.name || externalBankCode,
+      externalAccountNumber: externalAccountNumber.trim(),
+      beneficiaryName: beneficiaryName.trim(),
+      amount: Number(amount),
+      transactionUuid: generateUuid(),
+      reference: description.trim() || 'Transferencia interbancaria Web Personas',
+    };
+  };
+
+  const buildInternalTransferPayload = () => ({
+    originAccountId: Number(originAccountId),
+    destinationAccountNumber: destinationAccount.trim(),
+    amount: Number(amount),
+    transactionUuid: generateUuid(),
+    reference: description.trim() || 'Transferencia Web Personas',
+  });
+
+  const processExternalTransfer = async () => {
+    const payload = buildExternalTransferPayload();
+    const response = await transferExternal(payload);
+
+    setTransferResult({
+      ...response.data,
+      destinationAccountNumber: externalAccountNumber.trim(),
+      destinationHolderName: beneficiaryName.trim(),
+    });
+  };
+
+  const processInternalTransfer = async () => {
+    const payload = buildInternalTransferPayload();
+    const response = await transferP2P(payload);
+
+    setTransferResult(response.data);
+  };
+
+  const processTransfer = async () => {
+    if (transferMode === 'external') {
+      await processExternalTransfer();
+      return;
+    }
+
+    await processInternalTransfer();
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setMessage('');
 
     const validationMessage = validateTransferForm();
+
     if (validationMessage) {
       setMessage(validationMessage);
       return;
@@ -210,33 +312,7 @@ export function TransferPage() {
     setOriginAccountSnapshot(selectedOriginAccount);
 
     try {
-      if (transferMode === 'external') {
-        const bank = banks.find((b) => b.code === externalBankCode);
-        const payload = {
-          originAccountId: Number(originAccountId),
-          externalBankCode,
-          externalBankName: bank?.name || externalBankCode,
-          externalAccountNumber: externalAccountNumber.trim(),
-          beneficiaryName: beneficiaryName.trim(),
-          amount: Number(amount),
-          transactionUuid: generateUuid(),
-          reference: description.trim() || 'Transferencia interbancaria Web Personas',
-        };
-
-        const response = await transferExternal(payload);
-        setTransferResult({ ...response.data, destinationAccountNumber: externalAccountNumber.trim(), destinationHolderName: beneficiaryName.trim() });
-      } else {
-        const payload = {
-          originAccountId: Number(originAccountId),
-          destinationAccountNumber: destinationAccount.trim(),
-          amount: Number(amount),
-          transactionUuid: generateUuid(),
-          reference: description.trim() || 'Transferencia Web Personas',
-        };
-
-        const response = await transferP2P(payload);
-        setTransferResult(response.data);
-      }
+      await processTransfer();
     } catch (error) {
       setMessage(getTransferErrorMessage(error));
     } finally {
@@ -255,9 +331,10 @@ export function TransferPage() {
     setExternalAccountNumber('');
     setBeneficiaryFirstName('');
     setBeneficiaryLastName('');
-    // reload accounts to get updated balances
+
     const loadAccounts = async () => {
       setLoadingAccounts(true);
+
       try {
         const response = await getAccountsByCustomerId(customerId);
         setAccounts(response.data || []);
@@ -267,6 +344,7 @@ export function TransferPage() {
         setLoadingAccounts(false);
       }
     };
+
     loadAccounts();
   };
 
@@ -274,15 +352,18 @@ export function TransferPage() {
     window.print();
   };
 
-  // ── Comprobante completo tras transferencia exitosa ──
   if (transferResult) {
     const originAcc = originAccountSnapshot || selectedOriginAccount;
     const transferDate = new Date();
     const formattedDate = transferDate.toLocaleDateString('es-EC', {
-      year: 'numeric', month: 'long', day: 'numeric',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     });
     const formattedTime = transferDate.toLocaleTimeString('es-EC', {
-      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
     });
 
     return (
@@ -297,9 +378,7 @@ export function TransferPage() {
           </div>
         </div>
 
-        {/* Comprobante */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none">
-          {/* Header del comprobante */}
           <div className="bg-green-700 px-6 py-4 text-white">
             <div className="flex items-center justify-between">
               <div>
@@ -313,15 +392,12 @@ export function TransferPage() {
             </div>
           </div>
 
-          {/* Cuerpo del comprobante */}
           <div className="px-6 py-5 space-y-5">
-            {/* ID de transacción */}
             <div className="bg-slate-50 rounded-xl px-4 py-3">
               <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">N.º de transacción</p>
               <p className="font-mono text-sm font-bold text-slate-800 break-all">{transferResult.transactionId}</p>
             </div>
 
-            {/* Estado */}
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-800 text-sm font-semibold px-3 py-1 rounded-full">
                 <CheckCircle size={14} />
@@ -329,7 +405,6 @@ export function TransferPage() {
               </span>
             </div>
 
-            {/* Detalles en grid */}
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
               <div>
                 <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-0.5">Cuenta origen</p>
@@ -357,7 +432,6 @@ export function TransferPage() {
               </div>
             </div>
 
-            {/* Monto destacado */}
             <div className="border-t border-slate-100 pt-4 flex items-center justify-between">
               <div>
                 <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-0.5">Monto transferido</p>
@@ -376,7 +450,6 @@ export function TransferPage() {
           </div>
         </div>
 
-        {/* Acciones */}
         <div className="flex flex-wrap gap-3 print:hidden">
           <button
             onClick={handleNewTransfer}
@@ -406,7 +479,6 @@ export function TransferPage() {
     );
   }
 
-  // ── Formulario de transferencia ──
   return (
     <div className="space-y-6">
       <div>
